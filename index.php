@@ -26,10 +26,10 @@ try {
 .flex-container > button.on { background: #7AD400; }
 </style>
 <div class="flex-container" id="switch-panel"><?php
-function getSwitchState( $switchName )
+function getSwitchState( $switchIP )
 {
     $ch = curl_init();
-    $url ="http://$switchName/report";
+    $url ="http://$switchIPreport";
     curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Content-Type:application/json' ) );
     curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
     curl_setopt( $ch, CURLOPT_URL, $url );
@@ -42,7 +42,7 @@ function getSwitchState( $switchName )
 foreach( $switches as $url => $name ) {
     $state = getSwitchState( $url );
     $state = $state->relay?"on":"";
-    echo "<button class='switch-button $state' data-switch-name='$url'>
+    echo "<button class='switch-button $state' data-switch-ip='$url'>
 <h2>$name</h2>
 <p>0.0</p>
 <p>0.0</p>
@@ -54,7 +54,7 @@ foreach( $switches as $url => $name ) {
 <script>
 function toggle( sw ) {
     let xhr = new XMLHttpRequest();
-    let url = "./ajax/toggle.php?switch-name="+sw.target.dataset["switchName"];
+    let url = "./ajax/toggle.php?switch-ip="+sw.target.dataset["switchIp"];
     xhr.open( "GET", url );
     xhr.responseType = "json";
     xhr.onload = function() {
@@ -82,7 +82,7 @@ function checkSwitches()
         if( sw ) {
 
             let xhr = new XMLHttpRequest();
-            let url = "./ajax/state.php?switch-name="+sw.dataset["switchName"];
+            let url = "./ajax/state.php?switch-ip="+sw.dataset["switchIp"];
             xhr.open( "GET", url );
             xhr.responseType = "json";
             xhr.onload = function() {
