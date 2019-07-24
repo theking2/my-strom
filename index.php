@@ -77,8 +77,8 @@ function checkSwitches()
 {
     let switches = document.getElementById( "switch-panel" );
     
-    const forEach = f => x => Array.prototype.forEach.call( x, f );
-    forEach((sw) => {
+    //const forEach = f => x => Array.prototype.forEach.call( x, f );
+    switches.childNodes.forEach((sw) => {
         if( sw ) {
 
             let xhr = new XMLHttpRequest();
@@ -97,7 +97,7 @@ function checkSwitches()
             };
             xhr.send(); 
         }
-    })( switches.childNodes );
+    });
 }
 window.setInterval( checkSwitches, 1500 );
 </script>
