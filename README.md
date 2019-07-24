@@ -3,14 +3,16 @@ Without telling other too much about our switching behaviour.
 
 the db has currently one table in use:
 
-CREATE TABLE `Switch` (
-  `SwitchID` int(11) UNSIGNED NOT NULL,
-  `SwitchName` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `IPAddr` int(11) UNSIGNED NOT NULL,
-  `RoomID` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CREATE TABLE `Switch` (
+      `SwitchID` int(11) UNSIGNED NOT NULL,
+      `SwitchName` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+      `IPAddr` int(11) UNSIGNED NOT NULL,
+      `RoomID` int(11) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+SwitchID, SwitchName are clear, RoomID is FK in table Room.
 IPaddresses are stored as unsigend int as that is what ipaddresses are 32bit numbers. The view vmSwitch reverses this.
+
 
 To edit in phpmyadmin use the INET_ATON() format. This will convert for instance 192.168.111.12 in 3232263948
 
