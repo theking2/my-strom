@@ -94,19 +94,18 @@ try {
 	};
 
 	function checkSwitches() {
-		let switches = document.getElementById("switch-panel");
+		let switches = document.querySelectorAll (".switch-button");
 
-		switches.childNodes.forEach((sw) => {
+		switches.forEach((sw) => {
 			if (sw) {
 				let xhr = new XMLHttpRequest();
-				let url = "./ajax/state.php?switch-ip=" + sw.dataset["switchIp"];
+				let url = "./ajax/state.php?switch-ip=" + sw.dataset.switchIp;
 				xhr.open("GET", url);
 				xhr.responseType = "json";
 				xhr.timeout = 2000;
 				xhr.onload = function() {
 					let temp = xhr.response["temperature"];
 					let power = xhr.response["power"];
-					sw.getElementsByTagName("p")[0].innerText = sw.dataset["switchIp"];
 					sw.getElementsByTagName("p")[1].innerText = temp.toFixed(1) + '°C';
 					sw.getElementsByTagName("p")[2].innerText = power.toFixed(1) + ' watt';
 					if (xhr.response["relay"])
