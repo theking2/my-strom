@@ -1,12 +1,12 @@
-<!doctype html>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <?php
+
+$settings = parse_ini_file('config.ini', true);
 
 try {
 	$db = new \PDO(
-		"mysql:dbname=myStrom;host=localhost",
-		"myStrom",
-		"myStrom",
+		"mysql:dbname={$settings['db']['name']};host={$settings['db']['server']}",
+		$settings['db']['user'],
+		$settings['db']['passwort'],
 		[
 			\PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
 			\PDO::ATTR_PERSISTENT => true
@@ -17,50 +17,54 @@ try {
 	foreach ($db->query("select SwitchName,IPAddr,RoomName from Switch inner join Room using(RoomID)") as $switch) {
 		$switches[$switch['IPAddr']] = $switch['SwitchName'];
 	}
-} catch( Exception $x ) {
-	error_log($x-> message );
+} catch (Exception $x) {
+	error_log($x->errorInfo[2]);
+	exit(0);
 }
+
+function getSwitchState($switchIP)
+{
+	$ch = curl_init();
+	$url = "http://{$switchIP}/report";
+	// please use curl_setopt_array here
+	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_URL, $url);
+	$result = curl_exec($ch);
+	curl_close($ch);
+
+	return json_decode($result);
+}
+
 ?>
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-.flex-container {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-}
+	.flex-container {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
 
-.flex-container>button {
-	background: #5AB400;
-	width: 200px;
-	height: 200px;
-	margin: 10px;
-	text-align: center;
+	.flex-container>button {
+		background: #5AB400;
+		width: 200px;
+		height: 200px;
+		margin: 10px;
+		text-align: center;
 
-}
+	}
 
-.flex-container>button.on {
-	background: #7AD400;
-}
+	.flex-container>button.on {
+		background: #7AD400;
+	}
 </style>
 <div class="flex-container" id="switch-panel">
 	<?php
 
-
-	function getSwitchState($switchIP) {
-		$ch = curl_init();
-		$url = "http://$switchIPreport";
-		// please use curl_setopt_array here
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_URL, $url);
-		$result = curl_exec($ch);
-		curl_close($ch);
-
-		return json_decode($result);
-	}
-
 	foreach ($switches as $url => $name) {
 		$state = getSwitchState($url);
-		$state = $state->relay ? "on" : "";
+		$state = $state?->relay ? "on" : "";
 		echo "<button class='switch-button $state' data-switch-ip='$url'>
 <h2>$name</h2>
 <p></p>
@@ -94,7 +98,7 @@ try {
 	};
 
 	function checkSwitches() {
-		let switches = document.querySelectorAll (".switch-button");
+		let switches = document.querySelectorAll(".switch-button");
 
 		switches.forEach((sw) => {
 			if (sw) {

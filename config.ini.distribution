@@ -1,0 +1,5 @@
+[db]
+server = 'host:port'
+name = dbname
+user = dbuser
+passwort = dbpasword
