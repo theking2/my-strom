@@ -1,6 +1,9 @@
 Simple my-Strom web application. 
 Without telling other too much about our switching behaviour.
 
+    create database mystrom;
+    create user mystrom identified by "mystrom";
+    grant all privileges on mystrom.* to `mystrom`@`%`;
 the db has currently one table in use:
 
     CREATE TABLE `Switch` (
