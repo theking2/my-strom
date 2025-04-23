@@ -4,14 +4,16 @@ Without telling other too much about our switching behaviour.
     create database mystrom;
     create user mystrom identified by "mystrom";
     grant all privileges on mystrom.* to `mystrom`@`%`;
+
 the db has currently one table in use:
 
     CREATE TABLE `Switch` (
-      `SwitchID` int(11) UNSIGNED NOT NULL,
-      `SwitchName` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-      `IPAddr` int(11) UNSIGNED NOT NULL,
-      `RoomID` int(11) NOT NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `switch_id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+      `name` varchar(32) NOT NULL,
+      `ip` int(11) unsigned NOT NULL,
+      `room_id` int(11) unsigned NOT NULL,
+      PRIMARY KEY (`switch_id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SwitchID, SwitchName are clear, RoomID is FK in table Room.
 IPaddresses are stored as unsigend int as that is what ipaddresses are 32bit numbers. The view vmSwitch reverses this.
