@@ -1,39 +1,56 @@
 <?php
 
-$settings = parse_ini_file('config.ini', true);
-
+$settings = parse_ini_file( 'config.ini', true );
+class myStromSwitch
+{
+	public function __construct(
+		public readonly string $ip,
+		public readonly string $name,
+		public readonly string $room_name )
+	{
+	}
+}
 try {
-	$db = new \PDO(
-		"mysql:dbname={$settings['db']['name']};host={$settings['db']['server']}",
+	$db = new \mysqli(
+		$settings['db']['server'],
 		$settings['db']['user'],
 		$settings['db']['passwort'],
-		[
-			\PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
-			\PDO::ATTR_PERSISTENT => true
-		]
+		$settings['db']['name']
 	);
 
-	$switches = [];
-	foreach ($db->query("select SwitchName,IPAddr,RoomName from Switch inner join Room using(RoomID)") as $switch) {
-		$switches[$switch['IPAddr']] = $switch['SwitchName'];
+	if( $db->connect_error ) {
+		throw new Exception( "Connection failed: " . $db->connect_error );
 	}
-} catch (Exception $x) {
-	error_log($x->errorInfo[2]);
-	exit(0);
+
+	$db->set_charset( "utf8" );
+
+	$switches = [];
+	foreach( $db->query( "select switch.name switch_name,ip,room.name room_name from switch join room using(room_id)" ) as $switch ) {
+		$switches[$switch['ip']] = new myStromSwitch(
+			$switch['ip'],
+			$switch['switch_name'],
+			$switch['room_name']
+		);
+	}
+} catch ( Exception $x ) {
+	error_log( $x->getMessage() );
+	exit( 0 );
 }
 
-function getSwitchState($switchIP)
+function getSwitchState( $switchIP )
 {
-	$ch = curl_init();
+	$ch  = curl_init();
 	$url = "http://{$switchIP}/report";
-	// please use curl_setopt_array here
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_URL, $url);
-	$result = curl_exec($ch);
-	curl_close($ch);
+	// use curl_setopt_array to set multiple options
+	curl_setopt_array( $ch, [
+		CURLOPT_HTTPHEADER     => ['Content-Type:application/json'],
+		CURLOPT_RETURNTRANSFER => true,
+		CURLOPT_URL            => $url
+	] );
+	$result = curl_exec( $ch );
+	curl_close( $ch );
 
-	return json_decode($result);
+	return json_decode( $result );
 }
 
 ?>
@@ -62,12 +79,14 @@ function getSwitchState($switchIP)
 <div class="flex-container" id="switch-panel">
 	<?php
 
-	foreach ($switches as $url => $name) {
-		$state = getSwitchState($url);
+	foreach( $switches as $url => $switch ) {
+		$name  = $switch->name;
+		$room  = $switch->room_name;
+		$state = getSwitchState( $url );
 		$state = $state?->relay ? "on" : "";
 		echo "<button class='switch-button $state' data-switch-ip='$url'>
 <h2>$name</h2>
-<p></p>
+<p>$room</p>
 <p style='font-size:small;'>0.0</p>
 <p>0.0</p>
 </button>";
@@ -82,7 +101,7 @@ function getSwitchState($switchIP)
 		xhr.open("GET", url);
 		xhr.responseType = "json";
 		xhr.timeout = 1000;
-		xhr.onload = function() {
+		xhr.onload = function () {
 			if (xhr.response["relay"])
 				sw.target.classList.add("on");
 			else
@@ -91,7 +110,7 @@ function getSwitchState($switchIP)
 		xhr.send();
 	}
 
-	window.onload = function() {
+	window.onload = function () {
 		let switchPanel = document.getElementById("switch-panel");
 		switchPanel.addEventListener("click", toggle);
 
@@ -107,7 +126,7 @@ function getSwitchState($switchIP)
 				xhr.open("GET", url);
 				xhr.responseType = "json";
 				xhr.timeout = 2000;
-				xhr.onload = function() {
+				xhr.onload = function () {
 					let temp = xhr.response["temperature"];
 					let power = xhr.response["power"];
 					sw.getElementsByTagName("p")[1].innerText = temp.toFixed(1) + '°C';
