@@ -1,57 +1,6 @@
-<?php
-
-$settings = parse_ini_file( 'config.ini', true );
-class myStromSwitch
-{
-	public function __construct(
-		public readonly string $ip,
-		public readonly string $name,
-		public readonly string $room_name )
-	{
-	}
-}
-try {
-	$db = new \mysqli(
-		$settings['db']['server'],
-		$settings['db']['user'],
-		$settings['db']['passwort'],
-		$settings['db']['name']
-	);
-
-	if( $db->connect_error ) {
-		throw new Exception( "Connection failed: " . $db->connect_error );
-	}
-
-	$db->set_charset( "utf8" );
-
-	$switches = [];
-	foreach( $db->query( "select switch.name switch_name,ip,room.name room_name from switch join room using(room_id)" ) as $switch ) {
-		$switches[$switch['ip']] = new myStromSwitch(
-			$switch['ip'],
-			$switch['switch_name'],
-			$switch['room_name']
-		);
-	}
-} catch ( Exception $x ) {
-	error_log( $x->getMessage() );
-	exit( 0 );
-}
-
-function getSwitchState( $switchIP )
-{
-	$ch  = curl_init();
-	$url = "http://{$switchIP}/report";
-	// use curl_setopt_array to set multiple options
-	curl_setopt_array( $ch, [
-		CURLOPT_HTTPHEADER     => ['Content-Type:application/json'],
-		CURLOPT_RETURNTRANSFER => true,
-		CURLOPT_URL            => $url
-	] );
-	$result = curl_exec( $ch );
-	curl_close( $ch );
-
-	return json_decode( $result );
-}
+<?php declare(strict_types=1);
+require 'db.php';
+require 'switches.php';
 
 ?>
 <!doctype html>
@@ -65,8 +14,8 @@ function getSwitchState( $switchIP )
 
 	.flex-container>button {
 		background: #5AB400;
-		width: 200px;
-		height: 200px;
+		width: 150px;
+		height: 100%;
 		margin: 10px;
 		text-align: center;
 
@@ -78,67 +27,69 @@ function getSwitchState( $switchIP )
 </style>
 <div class="flex-container" id="switch-panel">
 	<?php
+	foreach( SWITCHES as $url => $switch ) {
+		$name = $switch->name;
+		$room = $switch->room_name;
 
-	foreach( $switches as $url => $switch ) {
-		$name  = $switch->name;
-		$room  = $switch->room_name;
-		$state = getSwitchState( $url );
-		$state = $state?->relay ? "on" : "";
-		echo "<button class='switch-button $state' data-switch-ip='$url'>
+		echo "<button class='switch-button' data-switch-ip='$url'>
 <h2>$name</h2>
 <p>$room</p>
-<p style='font-size:small;'>0.0</p>
-<p>0.0</p>
+<p id='temperature' style='font-size:small;'>...</p>
+<p id='watts'>...</p>
 </button>";
 	}
 	?>
 </div>
 
 <script>
-	function toggle(sw) {
-		let xhr = new XMLHttpRequest();
-		let url = "./ajax/toggle.php?switch-ip=" + sw.target.dataset["switchIp"];
-		xhr.open("GET", url);
-		xhr.responseType = "json";
-		xhr.timeout = 1000;
-		xhr.onload = function () {
-			if (xhr.response["relay"])
-				sw.target.classList.add("on");
-			else
-				sw.target.classList.remove("on");
-		};
-		xhr.send();
-	}
+	/**
+	 * Listen for the stream of sensor data from the server
+	 * and update the UI accordingly.
+	 */
+	const evtSource = new EventSource('stream.php');
 
-	window.onload = function () {
-		let switchPanel = document.getElementById("switch-panel");
-		switchPanel.addEventListener("click", toggle);
+	evtSource.onmessage = event => {
+		data = JSON.parse(event.data);
+		for (const [key, value] of Object.entries(data)) {
+			let button = document.querySelector(`button[data-switch-ip="${key}"]`);
+			if (value.relay) {
+				button.classList.add("on");
+			} else {
+				button.classList.remove("on");
+			}
+
+			button.querySelector("#temperature").innerText = value.temperature;
+			button.querySelector("#watts").innerText = `${value.power}/${value.Ws}`;
+		}
 
 	};
 
-	function checkSwitches() {
-		let switches = document.querySelectorAll(".switch-button");
+	const buttons = document.querySelectorAll(".switch-button");
+	buttons.forEach(button => {
+		button.addEventListener("click", toggle, { capture: true });
+	});
 
-		switches.forEach((sw) => {
-			if (sw) {
-				let xhr = new XMLHttpRequest();
-				let url = "./ajax/state.php?switch-ip=" + sw.dataset.switchIp;
-				xhr.open("GET", url);
-				xhr.responseType = "json";
-				xhr.timeout = 2000;
-				xhr.onload = function () {
-					let temp = xhr.response["temperature"];
-					let power = xhr.response["power"];
-					sw.getElementsByTagName("p")[1].innerText = temp.toFixed(1) + '°C';
-					sw.getElementsByTagName("p")[2].innerText = power.toFixed(1) + ' watt';
-					if (xhr.response["relay"])
-						sw.classList.add("on");
-					else
-						sw.classList.remove("on");
-				};
-				xhr.send();
+
+	async function toggle(sw) {
+		sw.preventDefault();
+
+		if (null == sw.currentTarget.dataset["switchIp"]) {
+			console.log("No switch IP found");
+			console.log(sw.target);
+			return;
+		}
+		let url = "./ajax/toggle.php?switch-ip=" + sw.target.dataset["switchIp"];
+		// Cross-Origin Resource Sharing (CORS) 
+		//let url = `http://${sw.target.dataset["switchIp"]}/toggle`;
+		try {
+			let response = await fetch(url);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
 			}
-		});
+
+		} catch (error) {
+			console.error("Error toggling switch:", error);
+		}
 	}
-	window.setInterval(checkSwitches, 2500);
+
 </script>
