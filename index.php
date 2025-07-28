@@ -52,11 +52,7 @@ require 'switches.php';
 		data = JSON.parse(event.data);
 		for (const [key, value] of Object.entries(data)) {
 			let button = document.querySelector(`button[data-switch-ip="${key}"]`);
-			if (value.relay) {
-				button.classList.add("on");
-			} else {
-				button.classList.remove("on");
-			}
+			button.classList.toggle("on", value.relay);
 
 			button.querySelector("#temperature").innerText = value.temperature;
 			button.querySelector("#watts").innerText = `${value.power}/${value.Ws}`;
@@ -69,27 +65,42 @@ require 'switches.php';
 		button.addEventListener("click", toggle, { capture: true });
 	});
 
-
+	let isProcessing = false;
 	async function toggle(sw) {
-		sw.preventDefault();
 
-		if (null == sw.currentTarget.dataset["switchIp"]) {
-			console.log("No switch IP found");
-			console.log(sw.target);
+		sw.preventDefault();
+		const switchElement = sw.currentTarget;
+		const switchIp = switchElement.dataset.switchIp;
+
+		if (!switchIp) {
+			console.log("No switch IP found", switchElement);
 			return;
 		}
-		let url = "./ajax/toggle.php?switch-ip=" + sw.target.dataset["switchIp"];
-		// Cross-Origin Resource Sharing (CORS) 
-		//let url = `http://${sw.target.dataset["switchIp"]}/toggle`;
+		if (isProcessing) return;
+		isProcessing = true;
+		// Add visual feedback (optional)
+		switchElement.classList.add('loading');
+
 		try {
-			let response = await fetch(url);
+			const url = `./ajax/toggle.php?switch-ip=${encodeURIComponent(switchIp)}`;
+			const response = await fetch(url);
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
+			// Optional: handle successful response
+			const result = await response.text(); // or .json() if appropriate
+			console.log("Toggle successful:", result);
+
 		} catch (error) {
 			console.error("Error toggling switch:", error);
+
+		} finally {
+			// Remove loading state
+			switchElement.classList.remove('loading');
+			isProcessing = false;
 		}
+
 	}
 
 </script>
